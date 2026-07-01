@@ -103,7 +103,7 @@ test.describe('useHls E2E Tests', () => {
     const errorStatus = page.locator('.error-status');
     await expect(async () => {
       const errorText = await errorStatus.innerText();
-      expect(errorText).toContain('NETWORK_ERROR');
+      expect(errorText.toLowerCase()).toContain('networkerror');
     }).toPass({ timeout: 10000 });
 
     // Recover by clicking Reset to load default stream URL again

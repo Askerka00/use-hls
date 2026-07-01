@@ -113,7 +113,7 @@ const selectQuality = (index: number) => {
           </div>
 
           <!-- Error Alert Overlay -->
-          <div v-if="error" class="overlay-error">
+          <div v-if="error && error.fatal" class="overlay-error">
             <div class="error-dialog">
               <span class="error-icon">⚠️</span>
               <h3>Произошла ошибка воспроизведения</h3>
