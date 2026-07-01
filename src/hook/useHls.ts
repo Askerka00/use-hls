@@ -111,79 +111,79 @@ export function useHls(
     }
     cleanVideoListeners = handleVideoEvents(video, 'add');
 
-    // Check native HLS support (mostly for Safari)
-    if (video.canPlayType('application/x-mpegURL') || video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Prioritize Hls.js if supported (provides custom levels, errors, and reconnects)
+    if (Hls.isSupported()) {
+      const hlsInstance = new Hls({
+        ...config,
+      });
+
+      hlsInstance.attachMedia(video);
+
+      hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
+        hlsInstance.loadSource(streamUrl);
+      });
+
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        levels.value = data.levels.map((level, index) => ({
+          index,
+          width: level.width || 0,
+          height: level.height || 0,
+          bitrate: level.bitrate,
+          label: level.name || `${level.height || level.width || 'Unknown'}p`,
+        }));
+        currentLevel.value = hlsInstance.currentLevel;
+
+        if (autoplay) {
+          video.play().catch(() => {});
+        }
+      });
+
+      hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
+        currentLevel.value = data.level;
+      });
+
+      hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+        error.value = {
+          type: data.type,
+          details: data.details,
+          fatal: data.fatal,
+        };
+
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error('Fatal network error encountered, attempting recovery...', data);
+              attemptReconnect();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error('Fatal media error encountered, attempting recovery...', data);
+              hlsInstance.recoverMediaError();
+              break;
+            default:
+              console.error('Unrecoverable fatal error:', data);
+              destroyHls();
+              break;
+          }
+        }
+      });
+
+      hls.value = hlsInstance;
+    }
+    // Fallback to native HLS support (mostly for iOS Safari where MSE is not supported)
+    else if (video.canPlayType('application/x-mpegURL') || video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
       if (autoplay) {
         video.play().catch(() => {});
       }
-      return;
     }
-
-    if (!Hls.isSupported()) {
+    // No HLS support at all
+    else {
       error.value = {
         type: 'SUPPORT_ERROR',
         details: 'HLS is not supported in this browser.',
         fatal: true,
       };
-      return;
     }
-
-    const hlsInstance = new Hls({
-      ...config,
-    });
-
-    hlsInstance.attachMedia(video);
-
-    hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
-      hlsInstance.loadSource(streamUrl);
-    });
-
-    hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-      levels.value = data.levels.map((level, index) => ({
-        index,
-        width: level.width || 0,
-        height: level.height || 0,
-        bitrate: level.bitrate,
-        label: level.name || `${level.height || level.width || 'Unknown'}p`,
-      }));
-      currentLevel.value = hlsInstance.currentLevel;
-
-      if (autoplay) {
-        video.play().catch(() => {});
-      }
-    });
-
-    hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
-      currentLevel.value = data.level;
-    });
-
-    hlsInstance.on(Hls.Events.ERROR, (_, data) => {
-      error.value = {
-        type: data.type,
-        details: data.details,
-        fatal: data.fatal,
-      };
-
-      if (data.fatal) {
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            console.error('Fatal network error encountered, attempting recovery...', data);
-            attemptReconnect();
-            break;
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            console.error('Fatal media error encountered, attempting recovery...', data);
-            hlsInstance.recoverMediaError();
-            break;
-          default:
-            console.error('Unrecoverable fatal error:', data);
-            destroyHls();
-            break;
-        }
-      }
-    });
-
-    hls.value = hlsInstance;
   };
 
   const attemptReconnect = () => {
