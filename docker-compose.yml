@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: use-hls-demo
+    ports:
+      - "8080:80"
+    restart: always
