@@ -89,7 +89,7 @@ const selectQuality = (index: number) => {
     <header class="header">
       <div class="logo-area">
         <span class="logo-icon">⚡</span>
-        <h1>useHls Vue Hook</h1>
+        <h1>vue-use-hls</h1>
         <span class="badge">v1.0.0</span>
       </div>
       <p class="subtitle">Легковесный, реактивный и надежный хук для HLS-видеопотоков во Vue 3</p>

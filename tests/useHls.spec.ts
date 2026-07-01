@@ -8,7 +8,7 @@ test.describe('useHls E2E Tests', () => {
 
   test('should load the page and render the video element', async ({ page }) => {
     // Check header
-    await expect(page.locator('h1')).toHaveText('useHls Vue Hook');
+    await expect(page.locator('h1')).toHaveText('vue-use-hls');
 
     // Check video element visibility
     const video = page.locator('video');
