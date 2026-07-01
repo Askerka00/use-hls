@@ -111,10 +111,7 @@ test.describe('useHls E2E Tests', () => {
     await resetBtn.click();
     await loadBtn.click();
 
-    // Click video again to play if needed
-    await video.click();
-
-    // Verify that the error is cleared and video starts playing again
+    // Verify that the error is cleared and video starts playing again (autoplay should resume playback)
     await expect(errorStatus).toContainText('Ошибок нет. Все работает отлично.');
     const stateCurrentTime = page.locator('.state-item:has-text("currentTime") .state-value');
     await expect(async () => {
