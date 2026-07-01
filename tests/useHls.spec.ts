@@ -35,6 +35,10 @@ test.describe('useHls E2E Tests', () => {
   });
 
   test('should display quality levels and allow switching', async ({ page }) => {
+    // Click video to bypass autoplay restrictions and start loading manifest
+    const video = page.locator('video');
+    await video.click();
+
     // Wait for the manifest to load and quality levels to be populated
     const levelsCountState = page.locator('.state-item:has-text("Levels count") .state-value');
     await expect(async () => {
@@ -92,13 +96,9 @@ test.describe('useHls E2E Tests', () => {
     await context.setOffline(true);
     console.log('Simulating offline...');
 
-    // Force seek to a non-buffered segment near the end to trigger network requests while offline
-    await page.evaluate(() => {
-      const v = document.querySelector('video');
-      if (v && v.duration) {
-        v.currentTime = v.duration - 15;
-      }
-    });
+    // Force reloading the stream while offline to trigger network error immediately
+    const loadBtn = page.locator('.btn-primary');
+    await loadBtn.click();
 
     // Wait for the error indicator in the status panel
     const errorStatus = page.locator('.error-status');
