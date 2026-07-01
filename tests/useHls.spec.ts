@@ -35,6 +35,9 @@ test.describe('useHls E2E Tests', () => {
   });
 
   test('should display quality levels and allow switching', async ({ page }) => {
+    // Hover over video wrapper to make controls interactive (pointer-events: auto)
+    await page.locator('.video-wrapper').hover();
+
     // Open quality dropdown menu
     const qualityBtn = page.locator('.quality-btn');
     await expect(qualityBtn).toBeVisible();
@@ -74,13 +77,20 @@ test.describe('useHls E2E Tests', () => {
     await context.setOffline(true);
     console.log('Simulating offline...');
 
-    // Wait for buffering state to trigger as network is lost
-    // Or wait for the error indicator in the status panel
+    // Force seek to a non-buffered segment near the end to trigger network requests while offline
+    await page.evaluate(() => {
+      const v = document.querySelector('video');
+      if (v) {
+        v.currentTime = v.duration - 20;
+      }
+    });
+
+    // Wait for the error indicator in the status panel
     const errorStatus = page.locator('.error-status');
     await expect(async () => {
       const errorText = await errorStatus.innerText();
       expect(errorText).toContain('NETWORK_ERROR');
-    }).toPass({ timeout: 10000 });
+    }).toPass({ timeout: 15000 });
 
     // Restore network
     await context.setOffline(false);

@@ -1,4 +1,5 @@
-import { ref, watch, onUnmounted, Ref, toValue, MaybeRefOrGetter } from 'vue';
+import { ref, watch, onUnmounted, toValue } from 'vue';
+import type { Ref, MaybeRefOrGetter } from 'vue';
 import Hls from 'hls.js';
 
 export interface UseHlsOptions {
