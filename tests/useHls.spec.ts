@@ -35,6 +35,13 @@ test.describe('useHls E2E Tests', () => {
   });
 
   test('should display quality levels and allow switching', async ({ page }) => {
+    // Wait for the manifest to load and quality levels to be populated
+    const levelsCountState = page.locator('.state-item:has-text("Levels count") .state-value');
+    await expect(async () => {
+      const countVal = await levelsCountState.innerText();
+      expect(parseInt(countVal)).toBeGreaterThan(0);
+    }).toPass({ timeout: 10000 });
+
     // Hover over video wrapper to make controls interactive (pointer-events: auto)
     await page.locator('.video-wrapper').hover();
 
@@ -73,6 +80,14 @@ test.describe('useHls E2E Tests', () => {
     const isBufferingState = page.locator('.state-item:has-text("isBuffering") .state-value');
     await expect(isBufferingState).toHaveText('false');
 
+    // Wait for video playback to actively start so metadata and duration are fully loaded
+    const stateCurrentTime = page.locator('.state-item:has-text("currentTime") .state-value');
+    await expect(async () => {
+      const timeVal = await stateCurrentTime.innerText();
+      const timeNum = parseFloat(timeVal.replace('s', ''));
+      expect(timeNum).toBeGreaterThan(0.5);
+    }).toPass({ timeout: 10000 });
+
     // Simulate network offline
     await context.setOffline(true);
     console.log('Simulating offline...');
@@ -80,8 +95,8 @@ test.describe('useHls E2E Tests', () => {
     // Force seek to a non-buffered segment near the end to trigger network requests while offline
     await page.evaluate(() => {
       const v = document.querySelector('video');
-      if (v) {
-        v.currentTime = v.duration - 20;
+      if (v && v.duration) {
+        v.currentTime = v.duration - 15;
       }
     });
 
