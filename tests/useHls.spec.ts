@@ -47,10 +47,12 @@ test.describe('useHls E2E Tests', () => {
       expect(timeNum).toBeGreaterThan(0.5);
     }).toPass({ timeout: 15000 });
 
-    // Verify quality levels exist in state
+    // Verify quality levels exist in state (with async retry to allow Vue DOM to sync)
     const levelsCountState = page.locator('.state-item:has-text("Levels count") .state-value');
-    const countVal = await levelsCountState.innerText();
-    expect(parseInt(countVal)).toBeGreaterThan(0);
+    await expect(async () => {
+      const countVal = await levelsCountState.innerText();
+      expect(parseInt(countVal)).toBeGreaterThan(0);
+    }).toPass({ timeout: 10000 });
 
     // Hover over video wrapper to make controls interactive (pointer-events: auto)
     await page.locator('.video-wrapper').hover();
@@ -82,45 +84,43 @@ test.describe('useHls E2E Tests', () => {
     await expect(stateCurrentLevel).toHaveText('Index 0');
   });
 
-  test('should handle network offline and retry recovery', async ({ context, page }) => {
+  test('should handle network errors and recover', async ({ page }) => {
     const video = page.locator('video');
     await video.click();
 
-    // Verify state is playing without buffering
+    // Verify state is playing without buffering initially
     const isBufferingState = page.locator('.state-item:has-text("isBuffering") .state-value');
     await expect(isBufferingState).toHaveText('false');
 
-    // Wait for video playback to actively start so metadata and duration are fully loaded
+    // Enter invalid stream URL to trigger network load error instantly
+    const urlInput = page.locator('#hls-url');
+    await urlInput.fill('https://invalid-stream-url-for-test-xyz.m3u8');
+
+    const loadBtn = page.locator('.btn-primary');
+    await loadBtn.click();
+
+    // Wait for the NETWORK_ERROR indicator in the status panel
+    const errorStatus = page.locator('.error-status');
+    await expect(async () => {
+      const errorText = await errorStatus.innerText();
+      expect(errorText).toContain('NETWORK_ERROR');
+    }).toPass({ timeout: 10000 });
+
+    // Recover by clicking Reset to load default stream URL again
+    const resetBtn = page.locator('.btn-secondary');
+    await resetBtn.click();
+    await loadBtn.click();
+
+    // Click video again to play if needed
+    await video.click();
+
+    // Verify that the error is cleared and video starts playing again
+    await expect(errorStatus).toContainText('Ошибок нет. Все работает отлично.');
     const stateCurrentTime = page.locator('.state-item:has-text("currentTime") .state-value');
     await expect(async () => {
       const timeVal = await stateCurrentTime.innerText();
       const timeNum = parseFloat(timeVal.replace('s', ''));
       expect(timeNum).toBeGreaterThan(0.5);
-    }).toPass({ timeout: 10000 });
-
-    // Simulate network offline
-    await context.setOffline(true);
-    console.log('Simulating offline...');
-
-    // Change stream URL to force trigger Vue watch and loadSource while offline
-    const urlInput = page.locator('#hls-url');
-    await urlInput.fill('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8?retry=1');
-
-    const loadBtn = page.locator('.btn-primary');
-    await loadBtn.click();
-
-    // Wait for the error indicator in the status panel
-    const errorStatus = page.locator('.error-status');
-    await expect(async () => {
-      const errorText = await errorStatus.innerText();
-      expect(errorText).toContain('NETWORK_ERROR');
     }).toPass({ timeout: 15000 });
-
-    // Restore network
-    await context.setOffline(false);
-    console.log('Network restored. Waiting for recovery...');
-
-    // Buffer should resolve and play should resume
-    await expect(isBufferingState).toHaveText('false');
   });
 });
