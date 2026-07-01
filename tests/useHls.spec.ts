@@ -39,12 +39,18 @@ test.describe('useHls E2E Tests', () => {
     const video = page.locator('video');
     await video.click();
 
-    // Wait for the manifest to load and quality levels to be populated
-    const levelsCountState = page.locator('.state-item:has-text("Levels count") .state-value');
+    // Wait for playback to actively start (ensures manifest is parsed and levels populated)
+    const stateCurrentTime = page.locator('.state-item:has-text("currentTime") .state-value');
     await expect(async () => {
-      const countVal = await levelsCountState.innerText();
-      expect(parseInt(countVal)).toBeGreaterThan(0);
-    }).toPass({ timeout: 10000 });
+      const timeVal = await stateCurrentTime.innerText();
+      const timeNum = parseFloat(timeVal.replace('s', ''));
+      expect(timeNum).toBeGreaterThan(0.5);
+    }).toPass({ timeout: 15000 });
+
+    // Verify quality levels exist in state
+    const levelsCountState = page.locator('.state-item:has-text("Levels count") .state-value');
+    const countVal = await levelsCountState.innerText();
+    expect(parseInt(countVal)).toBeGreaterThan(0);
 
     // Hover over video wrapper to make controls interactive (pointer-events: auto)
     await page.locator('.video-wrapper').hover();
@@ -96,7 +102,10 @@ test.describe('useHls E2E Tests', () => {
     await context.setOffline(true);
     console.log('Simulating offline...');
 
-    // Force reloading the stream while offline to trigger network error immediately
+    // Change stream URL to force trigger Vue watch and loadSource while offline
+    const urlInput = page.locator('#hls-url');
+    await urlInput.fill('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8?retry=1');
+
     const loadBtn = page.locator('.btn-primary');
     await loadBtn.click();
 
